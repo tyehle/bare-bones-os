@@ -33,7 +33,7 @@ enum vga_color {
 };
 
 static inline uint8_t vga_entry_color(enum vga_color fg, enum vga_color bg) {
-  return fg | bg << 4; // what?
+  return fg | bg << 4;
 }
 
 static inline uint16_t vga_entry(unsigned char uc, uint8_t color) {
@@ -57,7 +57,7 @@ uint16_t* terminal_buffer;
 void termainl_initialize(void) {
   terminal_row = 0;
   terminal_color = 0;
-  terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+  terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_DARK_GREY);
   terminal_buffer = (uint16_t*)0xB8000;
   for(size_t y = 0; y < VGA_HEIGHT; y++) {
     for(size_t x = 0; x < VGA_WIDTH; x++) {
@@ -76,15 +76,44 @@ void terminal_putentryat(char c, uint8_t color, size_t x, size_t y) {
   terminal_buffer[index] = vga_entry(c, color);
 }
 
+void scroll(void) {
+  for(size_t y = 1; y < VGA_HEIGHT; y++) {
+    // copy this row into the one above it
+    for(size_t x = 0; x < VGA_WIDTH; x++) {
+      size_t index = y*VGA_WIDTH + x;
+      terminal_buffer[index - VGA_WIDTH] = terminal_buffer[index];
+    }
+  }
+
+  // clear the last row
+  for(size_t x = 0; x < VGA_WIDTH; x++) {
+    size_t index = VGA_WIDTH*(VGA_HEIGHT-1) + x;
+    terminal_buffer[index] = vga_entry(' ', terminal_color);
+  }
+}
+
 void terminal_putchar(char c) {
-  terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
-  terminal_column += 1;
+  if(c == '\n') {
+    // TODO: handle '\\r'?
+    // write spaces so the colors are correct
+    for(size_t x = terminal_column; x < VGA_WIDTH; x++) {
+      terminal_putentryat(' ', terminal_color, x, terminal_row);
+    }
+    terminal_row += 1;
+    terminal_column = 0;
+  } else {
+    terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
+    terminal_column += 1;
+  }
+
   if(terminal_column == VGA_WIDTH) {
     terminal_column = 0;
     terminal_row += 1;
-    if(terminal_row == VGA_HEIGHT) {
-      terminal_row = 0;
-    }
+  }
+
+  if(terminal_row == VGA_HEIGHT) {
+    scroll();
+    terminal_row -= 1;
   }
 }
 
@@ -98,7 +127,19 @@ void terminal_writestring(const char* data) {
   terminal_write(data, strlen(data));
 }
 
+void time(void);
+
 void kernel_main(void) {
+  char* logo = "   ,--,,\n"
+               " _\"  ; ;          ___    ___\n"
+               "/ .. _&           \\   \\  \\___\n"
+               "\\___/  )  i n k g  \\___\\   ___\\\n"
+               "      /\n"
+               "\\____/\n";
+
   termainl_initialize(); // init the terminal interface
-  terminal_writestring("Hello world from the kernel!\n"); // write a string
+  terminal_setcolor(vga_entry_color(VGA_COLOR_GREEN, VGA_COLOR_DARK_GREY));
+  terminal_writestring(logo);
+  terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_DARK_GREY));
+  terminal_writestring("\nHello from the kernel\n");
 }
