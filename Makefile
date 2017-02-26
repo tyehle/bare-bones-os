@@ -1,5 +1,5 @@
-BIN = myos.bin
-ISO = myos.iso
+BIN = ginkgos.bin
+ISO = ginkgos.iso
 
 OBJ = boot.o kernel.o
 
