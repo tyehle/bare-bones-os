@@ -5,13 +5,13 @@ OBJ = boot.o kernel.o
 
 .PHONY : clean
 
-run-iso : iso
+run-iso : $(ISO)
 	qemu-system-i386 -cdrom $(ISO)
 
 run-bin : $(BIN)
 	qemu-system-i386 -kernel $(BIN)
 
-iso : $(BIN)
+$(ISO) : $(BIN)
 	grub-file --is-x86-multiboot $(BIN) || (echo "the file is not multiboot"; exit 1)
 	mkdir -p isodir/boot/grub
 	cp $(BIN) isodir/boot/$(BIN)
@@ -30,4 +30,6 @@ $(BIN) : $(OBJ) linker.ld
 
 clean :
 	if [ -d isodir ]; then rm -r isodir; fi
-	rm *.iso *.bin *.o
+	find *.o -delete
+	if [ -e $(ISO) ]; then rm $(ISO); fi
+	if [ -e $(BIN) ]; then rm $(BIN); fi
