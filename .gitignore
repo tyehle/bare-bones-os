@@ -1,5 +1,3 @@
-cross-src
-
-*.o
-*.bin
 *.iso
+isodir
+sysroot
